@@ -100,16 +100,14 @@ function replaceByLineNumbers(currentCode: string, lineNumbers: number[] | undef
   return currentCode.includes("\r\n") ? updated.replace(/\n/g, "\r\n") : updated;
 }
 
-function getReferencedIssue(fix: FixSuggestion): ReferencedIssue | null {
-  try {
-    const stored = sessionStorage.getItem("analysisResult");
-    if (!stored) return null;
+function getReferencedIssue(fix: FixSuggestion, analysisResult: AnalysisResponse | null): ReferencedIssue | null {
+  if (!analysisResult) return null;
 
-    const result = JSON.parse(stored) as AnalysisResponse;
+  try {
     const issues: ReferencedIssue[] = [
-      ...result.vulnerabilities,
-      ...result.hallucinations,
-      ...result.code_smells,
+      ...analysisResult.vulnerabilities,
+      ...analysisResult.hallucinations,
+      ...analysisResult.code_smells,
     ];
 
     return issues.find((issue) => issue.id === fix.references_issue) ?? null;
@@ -124,8 +122,12 @@ export function FixPanel({ fix }: FixPanelProps) {
   const handleApplyFix = () => {
     // Get the current code from sessionStorage (set when navigating to results)
     const currentCode = sessionStorage.getItem("lastCode") || "";
-    const referencedIssue = getReferencedIssue(fix);
-    const affectedCode = fix.affected_code || referencedIssue?.affected_code || "";
+    
+    // Get analysisResult to look up referenced issue details
+    const analysisResultStr = sessionStorage.getItem("analysisResult");
+    const analysisResult = analysisResultStr ? JSON.parse(analysisResultStr) : null;
+    const referencedIssue = getReferencedIssue(fix, analysisResult);
+    const affectedCode = fix.affected_code || (referencedIssue ? referencedIssue.affected_code : undefined) || "";
     
     if (!affectedCode.trim()) {
       alert("Unable to apply fix: this fix suggestion does not include the affected code to replace.");
@@ -135,7 +137,7 @@ export function FixPanel({ fix }: FixPanelProps) {
     const fixedCode =
       replaceByExactSnippet(currentCode, affectedCode, fix.fixed_code) ??
       replaceByLooseLineMatch(currentCode, affectedCode, fix.fixed_code) ??
-      replaceByLineNumbers(currentCode, referencedIssue?.line_numbers, fix.fixed_code);
+      replaceByLineNumbers(currentCode, referencedIssue ? referencedIssue.line_numbers : undefined, fix.fixed_code);
 
     if (!fixedCode) {
       alert("Unable to apply fix: The affected code was not found in the current file. Re-run the audit so CodeGuard-AI can generate a fresh fix for the current code.");
@@ -143,9 +145,11 @@ export function FixPanel({ fix }: FixPanelProps) {
     }
     
     // Store the fixed code in sessionStorage to be used on the home page
+    // Also preserve analysisResult for potential future use
     sessionStorage.setItem("fixedCode", fixedCode);
     sessionStorage.setItem("lastCode", fixedCode);
     sessionStorage.setItem("fixedCodeLanguage", "auto"); // We could try to detect language, but for now use auto
+    // Note: We deliberately preserve analysisResult in sessionStorage
     // Redirect back to home page
     router.push("/");
   };
