@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { X, Lock, Mail } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -28,7 +29,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       formData.append("username", email);
       formData.append("password", password);
 
-      const response = await fetch("http://localhost:8000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",

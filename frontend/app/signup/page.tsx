@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Mail, Lock, X, UserPlus } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +22,7 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:8000/api/auth/signup", {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
